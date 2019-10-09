@@ -6,8 +6,6 @@ const mongoose=require('mongoose')
 
 exports.sendEmail =  (req, res) => {
 
-
-
     
     const mail =new Mail({
      _id:mongoose.Types.ObjectId(),

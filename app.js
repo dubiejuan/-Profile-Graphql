@@ -1,34 +1,37 @@
 'use strict'
 require('dotenv').config()
-const  express  = require('express')
+const express = require('express')
 const cors = require('cors')
-const bodyParser= require('body-parser')
+const bodyParser = require('body-parser')
 const morgan = require('morgan')
-const mongoose=require('mongoose')
-const graphqlHttp =require('express-graphql')
-const {buildSchema} =require('graphql')
-  
+const mongoose = require('mongoose')
+const graphqlHttp = require('express-graphql')
+const {
+  buildSchema
+} = require('graphql')
+const Mail = require('./models/mailModel');
+const MailService = require('./services/mailService')
 const app = express()
 
 
-
+const emails = [];
 
 
 
 //CONNECT TO DATA BASE
 mongoose.connect(
-    `mongodb://${process.env.MONGODB_HOST}:${process.env.MONGODB_PORT}/${process.env.MONGODB_DB}`,{
+    `mongodb://${process.env.MONGODB_HOST}:${process.env.MONGODB_PORT}/${process.env.MONGODB_DB}`, {
       useNewUrlParser: true,
       useUnifiedTopology: true
+    })
+  .then(() => {
+    console.log('connected')
+
   })
-    .then(() => {
-       console.log('connected')
-       
-    })
-    .catch((error) => {
-       console.log('error',error)
-   
-    })
+  .catch((error) => {
+    console.log('error', error)
+
+  })
 
 
 //MORGAN FOR HTTP request info
@@ -58,24 +61,28 @@ app.use(cors(corsOptions))
 app.use(cors())
 
 
-/*
- type RootMutation {
-                createEmail(_id:ID;
-                    name: String!,
-                    email: String!,
-                    message: String!,
-                    createTime: String!):String
-            }
-            */
-
-app.use('/graphql',graphqlHttp({
-        schema:buildSchema(
-            `type RootQuery {
-                emails:[String!]!
+app.use('/graphql', graphqlHttp({
+  schema: buildSchema(`
+              type Email {
+                _id:ID
+                name: String!
+                email: String!
+                message: String!
+                createTime: String!
+              }
+              input EmailInput{
+                _id:ID
+                name: String!
+                email: String!
+                message: String!
+              }
+              
+              type RootQuery {
+                emails:[Email!]!
               }
               
               type RootMutation {
-                createEmail(name:String):String
+                createEmail(emailInput:EmailInput):Email
               }
 
             schema {
@@ -83,27 +90,58 @@ app.use('/graphql',graphqlHttp({
                 mutation:RootMutation
             }
         `),
-        rootValue:{
-            emails:()=>{
-                return ['juancho']
-                 
-            },
-            createEmail:()=>{
-              console.log(args)
-              const evenName=args.name;
-              return evenName;
-              
+  rootValue: {
+    emails: () => {
+      return Mail.find({})
+        .then((mailsResponse) => {
+          return mailsResponse.map(key => {
+            return {
+              ...key._doc,
+              _id: key.id
             }
-            
-            
-        },
-        graphiql:true
+          })
+        })
+        .catch((error) => {
+          throw error
+        })
+    },
+    createEmail: async (args) => {
+
+      const mail = new Mail({
+        _id: mongoose.Types.ObjectId(),
+        name: args.emailInput.name,
+        email: args.emailInput.email,
+        message: args.emailInput.message
+      })
+
+      
+
+      return mail.save()
+        .then( result => {
+           MailService.sendEmail(args.emailInput,(error, mailResponse) =>{
+            if(error){
+             throw error
+             }     
+             console.log(mailResponse)       
+             })
+          return result
+        })
+        .catch(error => {
+          throw error
+        })
+
+
+    }
+
+
+  },
+  graphiql: true
 }))
 
 
 
 
 
-app.listen(process.env.PORT,()=>{
-    console.log('Listening por',process.env.PORT)
+app.listen(process.env.PORT, () => {
+  console.log('Listening por', process.env.PORT)
 })

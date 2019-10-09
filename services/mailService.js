@@ -1,3 +1,5 @@
+'use strict'
+require('dotenv').config()
 const nodemailer = require('nodemailer')
 
 module.exports={
@@ -24,15 +26,14 @@ module.exports={
 
  function  send (data){
     return new Promise((resolve, reject) => {
-        const transporter = nodemailer.createTransport({
+       const transporter = nodemailer.createTransport({
                 service:'gmail',
                 auth: {
                     user: `${process.env.EMAIL}`,
                     pass: `${process.env.PASSWORD}`
                 }
             })
-
-           
+       
             // send mail with defined transport object
             const mailOptions={
                 from: `${data.name}<${data.email}>`, // sender address
@@ -44,10 +45,11 @@ module.exports={
          
                 transporter.sendMail(mailOptions,(error,info)=> {
                     if(error){
-                        reject(err)
+                        reject(error)
                          }
                         resolve(info)
                 })
+            
           })
 
         

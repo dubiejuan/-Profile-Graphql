@@ -14,10 +14,6 @@ const MailService = require('./services/mailService')
 const app = express()
 
 
-const emails = [];
-
-
-
 //CONNECT TO DATA BASE
 mongoose.connect(
     `mongodb://${process.env.MONGODB_HOST}:${process.env.MONGODB_PORT}/${process.env.MONGODB_DB}`, {
@@ -40,12 +36,9 @@ app.use(morgan('dev'))
 
 //BODY PARSE FOR BODY DATA
 
-
-
-
 app.use(bodyParser.json())
-/*
-let whitelist = ['http://localhost:5000']
+
+let whitelist = ['http://localhost:8080']
 
 let corsOptions = {
   origin: function (origin, callback) {
@@ -56,8 +49,8 @@ let corsOptions = {
     }
   }
 }
+
 app.use(cors(corsOptions))
-*/
 app.use(cors())
 
 
@@ -114,28 +107,22 @@ app.use('/graphql', graphqlHttp({
         message: args.emailInput.message
       })
 
-      
+      try {
+        let saveModel = await mail.save()
 
-      return mail.save()
-        .then( result => {
-           MailService.sendEmail(args.emailInput,(error, mailResponse) =>{
-            if(error){
-             throw error
-             }     
-             console.log(mailResponse)       
-             })
-          return result
-        })
-        .catch(error => {
-          throw error
-        })
-
-
+        try {
+          let mailResponse = await MailService.sendEmail(args.emailInput)
+          console.log('email response', mailResponse)
+          return saveModel
+        } catch (errorMail) {
+          return errorMail
+        }
+      } catch (error) {
+        return error
+      }
     }
+  }
 
-
-  },
-  graphiql: true
 }))
 
 
